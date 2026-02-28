@@ -210,10 +210,10 @@ xdescribe('MainHeaderComponent', () => {
     expect(component.tenantInfo.titleName).toBeUndefined();
   });
 
-  it('Should preserve existing query params and add search key', () => {
+  it('All query param should be removed except key and language', () => {
     component.queryParam = { 'board': 'NCERT', 'medium': 'English' };
     component.onEnter('test');
-    expect(component.queryParam).toEqual({ 'key': 'test', 'selectedTab': 'course' });
+    expect(component.queryParam).toEqual({ 'key': 'test' });
   });
 
   it('should fetch managed user list as user is not logged in', () => {

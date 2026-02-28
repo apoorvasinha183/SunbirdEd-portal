@@ -19,6 +19,6 @@ module.exports = {
     V1: 'v1',
     V3: 'v3'
   },
-  LOCALHOST:'http://localhost:3000/',
+  LOCALHOST:'http://localhost:9000',
   GOOGLE_VERIFICATION_URL: 'https://www.google.com/recaptcha/api/siteverify'
 };

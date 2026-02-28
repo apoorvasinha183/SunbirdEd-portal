@@ -10,7 +10,7 @@ const express = require('express'),
 defaultTenantIndexStatus = tenantHelper.getDefaultTenantIndexState(),
   oneDayMS = 86400000,
   pathMap = {},
-  cdnIndexFileExist = fs.existsSync(path.join(__dirname, '../dist', 'index_cdn.ejs')),
+  cdnIndexFileExist = fs.existsSync(path.join(__dirname, '../dist', 'index.html')),
   proxyUtils = require('../proxy/proxyUtils.js')
 const CONSTANTS = require('../helpers/constants');
 const { memoryStore } = require('../helpers/keyCloakHelper')
@@ -68,9 +68,9 @@ module.exports = (app, keycloak) => {
       })
   }
 
-  app.use(express.static(path.join(__dirname, '../dist'), { extensions: ['ejs'], index: false }))
+  app.use(express.static(path.join(__dirname, '../dist'), { extensions: ['html'], index: false }))
 
-  app.use('/dist', express.static(path.join(__dirname, '../dist'), { extensions: ['ejs'], index: false }))
+  app.use('/dist', express.static(path.join(__dirname, '../dist'), { extensions: ['html'], index: false }))
 
   app.use(express.static(path.join(__dirname, '../tenant'), { index: false }))
 
@@ -247,7 +247,7 @@ const renderDefaultIndexPage = (req, res) => {
     })
     if (envHelper.PORTAL_CDN_URL && cdnIndexFileExist && req.cookies.cdnFailed !== 'yes') { // assume cdn works and send cdn ejs file
       res.locals.cdnWorking = 'yes';
-      res.render(path.join(__dirname, '../dist', 'index_cdn.ejs'))
+      res.sendFile(path.join(__dirname, '../dist', 'index.html'))
     } else { // load local file if cdn fails or cdn is not enabled
       if (req.cookies.cdnFailed === 'yes') {
         logger.info({
@@ -259,7 +259,7 @@ const renderDefaultIndexPage = (req, res) => {
         })
       }
       res.locals.cdnWorking = 'no';
-      res.render(path.join(__dirname, '../dist', 'index.ejs'))
+      res.sendFile(path.join(__dirname, '../dist', 'index.html'))
     }
   }
 }

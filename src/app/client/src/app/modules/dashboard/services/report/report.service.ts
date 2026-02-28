@@ -79,7 +79,7 @@ export class ReportService {
       return this.fetchDataSource(_.get(source, 'path'), _.get(source, 'id'));
     });
     return forkJoin(...apiCalls).pipe(
-      mergeMap((response: any[]) => {
+      mergeMap(response => {
 
         response = response.filter(function (item) { if (item) { return item.loaded = true; } });
         return this.getFileMetaData(dataSources).pipe(

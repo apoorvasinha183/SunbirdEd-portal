@@ -45,6 +45,9 @@ const appRoutes: Routes = [
     path: 'manage', loadChildren: () => import('./modules/manage/manage.module').then(m => m.ManageModule)
   },
   {
+    path: 'uci-admin', loadChildren: () => import('./modules/uci-admin/uci-admin.module').then(m => m.UciAdminModule)
+  },
+  {
     path: '', loadChildren: () => import('./modules/public/public.module').then(m => m.PublicModule)
   },
   {
@@ -80,7 +83,7 @@ const appRoutes: Routes = [
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(appRoutes)],
+  imports: [RouterModule.forRoot(appRoutes, { relativeLinkResolution: 'corrected' })],
   exports: [RouterModule]
 })
 export class AppRoutingModule { }

@@ -25,7 +25,7 @@ export class ContentManagerComponent implements OnInit, OnDestroy {
   localStatusArr = ['inProgress', 'inQueue', 'resume', 'resuming', 'pausing', 'canceling'];
   cancelId: string;
   apiCallTimer = timer(1000, 3000).pipe(filter(data => !data || (this.callContentList)));
-  apiCallSubject = new Subject<void>();
+  apiCallSubject = new Subject();
   completedCount: number;
   handledFailedList = [];
   unHandledFailedList = [];

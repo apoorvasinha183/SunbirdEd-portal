@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SCORM Player Test</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        #info { background: #f0f0f0; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        #player-container { width: 100%; height: 80vh; border: 2px solid #ccc; }
+        iframe { width: 100%; height: 100%; border: none; }
+        .status { padding: 5px 10px; border-radius: 3px; display: inline-block; margin: 5px 0; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>SCORM Player Direct Test</h2>
+        <div id="status">Loading...</div>
+        <div id="content-info"></div>
+    </div>
+    
+    <div id="player-container">
+        <iframe id="scorm-iframe" src=""></iframe>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/scorm-again@latest/dist/scorm-again.min.js"></script>
+    <script>
+        const contentId = 'do_11451806902231040012';
+        const userId = 'guest';
+        
+        // Initialize SCORM API
+        const scormApi = new Scorm2004API({
+            lmsCommitUrl: `/api/scorm/v1/commit`,
+            dataCommitFormat: 'json',
+            autocommit: true,
+            autocommitSeconds: 30,
+            logLevel: 4
+        });
+
+        // Expose API to iframe
+        window.API_1484_11 = scormApi;
+        window.API = scormApi; // For SCORM 1.2
+
+        // Fetch content metadata
+        fetch(`http://localhost:9000/content/v3/read/${contentId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.responseCode === 'OK') {
+                    const content = data.result.content;
+                    const streamingUrl = content.streamingUrl;
+                    const launchUrl = content.scormLaunchUrl || 'index_lms.html';
+                    const fullUrl = `${streamingUrl}/${launchUrl}`;
+                    
+                    document.getElementById('status').innerHTML = 
+                        '<span class="status success">✓ Content loaded successfully</span>';
+                    document.getElementById('content-info').innerHTML = `
+                        <p><strong>Content ID:</strong> ${content.identifier}</p>
+                        <p><strong>Name:</strong> ${content.name}</p>
+                        <p><strong>Status:</strong> ${content.status}</p>
+                        <p><strong>SCORM URL:</strong> <a href="${fullUrl}" target="_blank">${fullUrl}</a></p>
+                    `;
+                    
+                    // Load SCORM content in iframe
+                    document.getElementById('scorm-iframe').src = fullUrl;
+                    
+                    // Set up SCORM event listeners
+                    scormApi.on('LMSInitialize', () => {
+                        console.log('SCORM: LMSInitialize called');
+                    });
+                    
+                    scormApi.on('LMSCommit', (data) => {
+                        console.log('SCORM: LMSCommit called', data);
+                        // Save to backend
+                        fetch('/api/scorm/v1/commit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contentId, userId, cmiData: data })
+                        });
+                    });
+                    
+                    scormApi.on('LMSFinish', () => {
+                        console.log('SCORM: LMSFinish called');
+                    });
+                    
+                } else {
+                    document.getElementById('status').innerHTML = 
+                        '<span class="status error">✗ Failed to load content</span>';
+                    document.getElementById('content-info').innerHTML = 
+                        `<p>Error: ${data.params.errmsg}</p>`;
+                }
+            })
+            .catch(err => {
+                document.getElementById('status').innerHTML = 
+                    '<span class="status error">✗ Error fetching content</span>';
+                document.getElementById('content-info').innerHTML = 
+                    `<p>Error: ${err.message}</p>`;
+            });
+    </script>
+</body>
+</html>

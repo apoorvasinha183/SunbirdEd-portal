@@ -31,9 +31,10 @@ Have node version 10 and follow the next steps
 
 Prerequisities
 
-	1. Node > 18x
+	1. Node > 18x (20x recommended)
 	2. Angular 1x
 	3. Yarn
+
 
 Sunbird dev has 2 parts 
 

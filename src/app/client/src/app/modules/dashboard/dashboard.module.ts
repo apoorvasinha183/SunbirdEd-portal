@@ -3,35 +3,23 @@ import { NgModule } from '@angular/core';
 import { CommonConsumptionModule } from '@project-sunbird/common-consumption';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
 // Modules
-import { NgChartsModule } from 'ng2-charts';
-import { SuiModule } from '@project-sunbird/ng2-semantic-ui';
-import { DASHBOARD_ROUTES } from './dashboard-routing.module';
+import { ChartsModule } from 'ng2-charts';
+import { SuiModule } from 'ng2-semantic-ui-v9';
+import { DashboardRoutingModule } from './dashboard-routing.module';
 import { TelemetryModule } from '@sunbird/telemetry';
-import { DashboardSharedModule } from './dashboard-shared.module';
 // Custome component(s) and services
 import {
   CourseConsumptionService, DashboardUtilsService, OrganisationService,
   RendererService, LineChartService, DownloadService, CourseProgressService,
   UsageService, ReportService
 } from './services';
-// Import components directly to avoid circular dependency
-import { OrganisationComponent } from './components/organization/organization.component';
-import { CourseConsumptionComponent } from './components/course-consumption/course-consumption.component';
-import { CourseProgressComponent } from './components/course-progress/course-progress.component';
-import { UsageReportsComponent } from './components/usage-reports/usage-reports.component';
-// DataTableComponent and FilterComponent are in DashboardSharedModule
-import { DataChartComponent } from './components/data-chart/data-chart.component';
-import { ReportComponent } from './components/report/report.component';
-import { ReportSummaryComponent } from './components/report-summary/report-summary.component';
-import { ListAllReportsComponent } from './components/list-all-reports/list-all-reports.component';
-import { AddSummaryModalComponent } from './components/add-summary-modal/add-summary-modal.component';
-import { CourseDashboardComponent } from './components/course-dashboard/course-dashboard.component';
-import { ReIssueCertificateComponent } from './components/re-issue-certificate/re-issue-certificate.component';
-import { DashboardSidebarComponent } from './components/dashboard-sidebar/dashboard-sidebar.component';
-import { DatasetComponent } from './components/dataset/dataset.component';
-import { MapComponent } from './components/map/map.component';
+import {
+  OrganisationComponent, CourseConsumptionComponent, CourseProgressComponent, UsageReportsComponent,
+  DataTableComponent, DataChartComponent, ReportComponent, ReportSummaryComponent, ListAllReportsComponent,
+  AddSummaryModalComponent, CourseDashboardComponent, ReIssueCertificateComponent, DashboardSidebarComponent,
+  DatasetComponent, MapComponent, FilterComponent
+} from './components';
 import { NgxDaterangepickerMd } from 'ngx-daterangepicker-material';
 // SB core and shared services
 import { SearchService } from '@sunbird/core';
@@ -53,9 +41,10 @@ import { MAT_DIALOG_DATA} from '@angular/material/dialog';
 @NgModule({
   imports: [
     CommonModule,
+    DashboardRoutingModule,
     FormsModule,
     ReactiveFormsModule,
-    NgChartsModule,
+    ChartsModule,
     SuiModule,
     SharedModule,
     CommonConsumptionModule,
@@ -69,14 +58,12 @@ import { MAT_DIALOG_DATA} from '@angular/material/dialog';
     MatSlideToggleModule,
     MatExpansionModule,
     SharedFeatureModule,
-    MatAutocompleteModule,
-    DashboardSharedModule,
-    RouterModule.forChild(DASHBOARD_ROUTES)  // Use the exported routes directly
+    MatAutocompleteModule
   ],
   declarations: [CourseConsumptionComponent, OrganisationComponent, CourseProgressComponent, UsageReportsComponent,
-    DataChartComponent, ListAllReportsComponent, ReportSummaryComponent, ReportComponent, AddSummaryModalComponent,
-    CourseDashboardComponent, ReIssueCertificateComponent, DashboardSidebarComponent, DatasetComponent, MapComponent, SbTableComponent],
-  exports: [DashboardSharedModule, RouterModule],
+    DataTableComponent, DataChartComponent, ListAllReportsComponent, ReportSummaryComponent, ReportComponent, AddSummaryModalComponent,
+    CourseDashboardComponent, ReIssueCertificateComponent, DashboardSidebarComponent, DatasetComponent, MapComponent, FilterComponent, SbTableComponent],
+  exports: [CourseProgressComponent, DataTableComponent,FilterComponent],
   providers: [
     RendererService,
     DashboardUtilsService,

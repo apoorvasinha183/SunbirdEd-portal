@@ -1,6 +1,6 @@
 import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { SuiModule } from '@project-sunbird/ng2-semantic-ui';
+import { SuiModule } from 'ng2-semantic-ui-v9';
 import { TelemetryModule } from '@sunbird/telemetry';
 import {
   ContentCreditsComponent, PlayerComponent, ContentPlayerMetadataComponent,
@@ -10,6 +10,7 @@ import {
   ContentPlayerPageComponent, ContentChapterlistComponent, ContentLicenceComponent,
   CurriculumInfoComponent, CourseInfoComponent
 } from './components';
+import { ScormPlayerComponent } from './components/scorm-player/scorm-player.component';
 import { SharedModule } from '@sunbird/shared';
 import { CoreModule } from '@sunbird/core';
 import { FormsModule } from '@angular/forms';
@@ -48,11 +49,13 @@ import { CslFrameworkService } from '../public/services/csl-framework/csl-framew
     ContentPlayerComponent, ContentPlayerPageComponent, ContentChapterlistComponent,
     ContentLicenceComponent,
     CurriculumInfoComponent,
-    CourseInfoComponent],
+    CourseInfoComponent,
+    ScormPlayerComponent],
   exports: [ContentCreditsComponent, PlayerComponent, ContentPlayerMetadataComponent,
     FancyTreeComponent, CollectionPlayerMetadataComponent, ContentRatingComponent,
     CommingSoonComponent, CreditsAndLicenceComponent, ContentActionsComponent,
     ContentPlayerComponent, ContentPlayerPageComponent, ContentChapterlistComponent,
-    ContentLicenceComponent, CurriculumInfoComponent, CourseInfoComponent],
+    ContentLicenceComponent, CurriculumInfoComponent, CourseInfoComponent,
+    ScormPlayerComponent],
 })
 export class PlayerHelperModule { }

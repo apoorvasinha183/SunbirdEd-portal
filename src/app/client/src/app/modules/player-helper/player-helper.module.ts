@@ -1,6 +1,6 @@
 import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { SuiModule } from 'ng2-semantic-ui-v9';
+import { SuiModule } from '@project-sunbird/ng2-semantic-ui';
 import { TelemetryModule } from '@sunbird/telemetry';
 import {
   ContentCreditsComponent, PlayerComponent, ContentPlayerMetadataComponent,
@@ -8,9 +8,8 @@ import {
   ContentRatingComponent, CommingSoonComponent,
   CreditsAndLicenceComponent, ContentActionsComponent, ContentPlayerComponent,
   ContentPlayerPageComponent, ContentChapterlistComponent, ContentLicenceComponent,
-  CurriculumInfoComponent, CourseInfoComponent
+  CurriculumInfoComponent, CourseInfoComponent, ScormPlayerComponent
 } from './components';
-import { ScormPlayerComponent } from './components/scorm-player/scorm-player.component';
 import { SharedModule } from '@sunbird/shared';
 import { CoreModule } from '@sunbird/core';
 import { FormsModule } from '@angular/forms';

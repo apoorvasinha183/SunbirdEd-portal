@@ -229,16 +229,15 @@ export class PlayerComponent implements OnInit, AfterViewInit, OnChanges, OnDest
   loadPlayer() {
     this.checkForQumlPlayer();
     this.playerType = null;
-    
-    // Check for SCORM content first, before form config
+
+    // SCORM content uses dedicated player — skip form config lookup
     if (_.get(this.playerConfig, 'metadata.mimeType') === 'application/vnd.ekstep.scorm-archive') {
       this.playerType = 'scorm-player';
-      this.showNewPlayer = true;
       this.playerLoaded = false;
       this.loadNewPlayer();
       return;
     }
-    
+
     const formReadInputParams = {
       formType: 'content',
       formAction: 'play',
@@ -313,13 +312,6 @@ export class PlayerComponent implements OnInit, AfterViewInit, OnChanges, OnDest
     this.collectionId = _.get(this.playerConfig, 'context.objectRollup.l1');
     if (downloadStatus && artifactUrl && !_.startsWith(artifactUrl, 'http://')) {
       this.playerConfig.metadata.artifactUrl = `${location.origin}/${artifactUrl}`;
-    }
-    
-    // Check for SCORM content
-    if (_.get(this.playerConfig, 'metadata.mimeType') === 'application/vnd.ekstep.scorm-archive') {
-      this.playerType = 'scorm-player';
-      this.showNewPlayer = true;
-      return;
     }
     
     const defaults = {

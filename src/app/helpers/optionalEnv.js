@@ -296,5 +296,18 @@ let optionalEnvVariables = {
     sunbird_portal_preview_cdn_url: env.sunbird_portal_preview_cdn_url,
     sunbird_portal_cdn_blob_url: env.sunbird_portal_cdn_blob_url || '',
     NLWEB_BASE_URL: env.sunbird_nlweb_api_url,
+
+    // ######## SCORM Configuration ########
+
+    // Origin of content storage for SCORM file proxy (MinIO, Azure Blob, etc.)
+    // Falls back through CONTENT_PROXY_URL → SB_DOMAIN.
+    SCORM_CONTENT_ORIGIN: env.sunbird_scorm_content_origin
+        || env.sunbird_content_proxy_url
+        || SB_DOMAIN,
+
+    // Comma-separated allowed domains for SCORM iframe URLs.
+    // The Angular component validates content URLs against this list
+    // before bypassSecurityTrustResourceUrl.
+    SCORM_ALLOWED_CONTENT_DOMAINS: env.sunbird_scorm_allowed_content_domains || '',
 }
 module.exports = optionalEnvVariables;

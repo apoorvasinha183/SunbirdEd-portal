@@ -1,20 +1,23 @@
 <div class="scorm-player-container">
+
+  <!-- Loading state -->
   <div *ngIf="loading" class="loading-spinner">
     <div class="spinner"></div>
     <p>Loading SCORM content...</p>
   </div>
-  
-  <div *ngIf="error" class="error-message">
-    <h3>Error Loading SCORM Content</h3>
-    <p>{{ error }}</p>
-    <p class="error-details">Please check the console for more details.</p>
+
+  <!-- Error state -->
+  <div *ngIf="errorMessage" class="error-message">
+    <h3>Error Loading Content</h3>
+    <p>{{ errorMessage }}</p>
   </div>
-  
+
+  <!-- SCORM iframe — only rendered when ready -->
   <iframe
-    *ngIf="!loading && !error"
-    #scormIframe
+    *ngIf="!loading && !errorMessage"
     [src]="contentUrl"
     class="scorm-iframe"
     allowfullscreen>
   </iframe>
+
 </div>

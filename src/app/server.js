@@ -236,9 +236,7 @@ app.get('/endSession', endSession, (req, res) => {
 // device routes
 require('./routes/deviceRoutes.js')(app);
 require('./routes/googleRoutes.js')(app);
-
-// SCORM API routes (register early, before catch-all routes)
-app.use('/', require('./routes/scormApi.js'))
+app.use('/', require('./routes/contentOriginProxy.js'));
 
 app.get('/health', healthService.createAndValidateRequestBody, healthService.checkHealth) // health check api
 
@@ -322,10 +320,9 @@ app.use('/plugin', subApp)
 
 // ****** DO NOT MODIFY THIS CODE BLOCK / RE-ORDER ******
 app.all('*', apiWhiteListLogger());
-// DISABLED FOR LOCAL DEVELOPMENT
-// if (envHelper.PORTAL_API_WHITELIST_CHECK == 'true') {
-//   app.all('*', isAllowed());
-// }
+if (envHelper.PORTAL_API_WHITELIST_CHECK == 'true') {
+  app.all('*', isAllowed());
+}
 // ****** DO NOT MODIFY THIS CODE BLOCK / RE-ORDER ******
 app.use('/resourcebundles/v1', bodyParser.urlencoded({ extended: false }),
   bodyParser.json({ limit: '50mb' }), require('./helpers/resourceBundles')(express)) // Resource bundles apis

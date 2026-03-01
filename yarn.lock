@@ -2,3 +2,7 @@
 # yarn lockfile v1
 
 
+scorm-again@^2.6.8:
+  version "2.6.8"
+  resolved "https://registry.npmjs.org/scorm-again/-/scorm-again-2.6.8.tgz"
+  integrity sha512-aJsHIZmueCB4cPnVreEgr7GGKB9f0XDtrW9q4gRGSNqatdLapEdaOt21XiSnsGWoLKT/pj9f05kgmgP3E72WiA==

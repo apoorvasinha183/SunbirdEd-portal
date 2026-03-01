@@ -10,7 +10,7 @@ const express = require('express'),
 defaultTenantIndexStatus = tenantHelper.getDefaultTenantIndexState(),
   oneDayMS = 86400000,
   pathMap = {},
-  cdnIndexFileExist = fs.existsSync(path.join(__dirname, '../dist', 'index.html')),
+  cdnIndexFileExist = fs.existsSync(path.join(__dirname, '../dist', 'index_cdn.ejs')),
   proxyUtils = require('../proxy/proxyUtils.js')
 const CONSTANTS = require('../helpers/constants');
 const { memoryStore } = require('../helpers/keyCloakHelper')
@@ -68,9 +68,9 @@ module.exports = (app, keycloak) => {
       })
   }
 
-  app.use(express.static(path.join(__dirname, '../dist'), { extensions: ['html'], index: false }))
+  app.use(express.static(path.join(__dirname, '../dist'), { extensions: ['ejs'], index: false }))
 
-  app.use('/dist', express.static(path.join(__dirname, '../dist'), { extensions: ['html'], index: false }))
+  app.use('/dist', express.static(path.join(__dirname, '../dist'), { extensions: ['ejs'], index: false }))
 
   app.use(express.static(path.join(__dirname, '../tenant'), { index: false }))
 
@@ -175,6 +175,8 @@ function getLocals(req) {
   locals.buildNumber = envHelper.BUILD_NUMBER
   locals.apiCacheTtl = envHelper.PORTAL_API_CACHE_TTL
   locals.cloudStorageUrls = envHelper.CLOUD_STORAGE_URLS
+  locals.scormContentOrigin = envHelper.SCORM_CONTENT_ORIGIN
+  locals.scormAllowedDomains = envHelper.SCORM_ALLOWED_CONTENT_DOMAINS
   locals.publicStorageAccount = envHelper.SUNBIRD_PUBLIC_STORAGE_ACCOUNT_NAME;
   locals.userUploadRefLink = envHelper.sunbird_portal_user_upload_ref_link
   locals.deviceRegisterApi = envHelper.DEVICE_REGISTER_API
@@ -247,7 +249,7 @@ const renderDefaultIndexPage = (req, res) => {
     })
     if (envHelper.PORTAL_CDN_URL && cdnIndexFileExist && req.cookies.cdnFailed !== 'yes') { // assume cdn works and send cdn ejs file
       res.locals.cdnWorking = 'yes';
-      res.sendFile(path.join(__dirname, '../dist', 'index.html'))
+      res.render(path.join(__dirname, '../dist', 'index_cdn.ejs'))
     } else { // load local file if cdn fails or cdn is not enabled
       if (req.cookies.cdnFailed === 'yes') {
         logger.info({
@@ -259,7 +261,7 @@ const renderDefaultIndexPage = (req, res) => {
         })
       }
       res.locals.cdnWorking = 'no';
-      res.sendFile(path.join(__dirname, '../dist', 'index.html'))
+      res.render(path.join(__dirname, '../dist', 'index.ejs'))
     }
   }
 }

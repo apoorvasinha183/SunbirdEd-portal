@@ -14,10 +14,7 @@ const { memoryStore } = require('../helpers/keyCloakHelper')
 module.exports = function (app) {
     const proxyReqPathResolverMethod = function (req) {
         console.log("inside public routes contentProxyUrl", contentProxyUrl);
-        // Strip /api prefix and convert v1 to v3 for content service
-        let path = req.originalUrl.replace('/api', '').replace('/content/v1/', '/content/v3/');
-        console.log("Proxying to:", contentProxyUrl + path);
-        return require('url').parse(contentProxyUrl + path).path
+        return require('url').parse(contentProxyUrl + req.originalUrl).path
     }
 
     // app.all('/api/content/v1/search', proxyObj());

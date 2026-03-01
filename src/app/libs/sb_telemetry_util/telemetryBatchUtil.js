@@ -8,7 +8,7 @@ var options = {
     noDisposeOnSet: true,
     dispose: dispose
 };
-var cache = new LRU(options);
+var cache = LRU(options);
 
 function date() {
     var today = new Date();

@@ -1,6 +1,17 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+// scorm-player.component.ts
+// Purpose: Thin UI shell that renders a SCORM package in an iframe.
+//
+// Follows the same contract as sunbird-pdf-player, sunbird-video-player, etc.:
+//   @Input()  playerConfig     — content metadata + context
+//   @Output() playerEvent      — lifecycle events (START, END, ERROR)
+//   @Output() telemetryEvent   — telemetry events (START, END for content read)
+//
+// All SCORM API logic is delegated to ScormService.
+// All persistence flows through the existing content-state-update API.
+
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { Scorm12API, Scorm2004API } from 'scorm-again';
+import { ScormService, ScormSessionConfig } from '../../service/scorm.service';
 
 @Component({
   selector: 'app-scorm-player',
@@ -8,196 +19,220 @@ import { Scorm12API, Scorm2004API } from 'scorm-again';
   styleUrls: ['./scorm-player.component.scss']
 })
 export class ScormPlayerComponent implements OnInit, OnDestroy {
+
+  // Same interface as every other Sunbird player
   @Input() playerConfig: any;
   @Output() playerEvent = new EventEmitter<any>();
   @Output() telemetryEvent = new EventEmitter<any>();
 
-  @ViewChild('scormIframe') scormIframe: ElementRef;
-
-  scormApi: any;
+  // Template-bound state
   contentUrl: SafeResourceUrl;
   loading = true;
-  error: string;
+  errorMessage: string | null = null;
 
-  constructor(private sanitizer: DomSanitizer) { }
+  // Internal reference to session config
+  private sessionConfig: ScormSessionConfig;
 
-  ngOnInit() {
-    this.initializeScormPlayer();
+  constructor(
+    private sanitizer: DomSanitizer,
+    private scormService: ScormService
+  ) {}
+
+
+  ngOnInit(): void {
+    this.initialize();
   }
 
-  async initializeScormPlayer() {
+
+  // -------------------------------------------------------------------
+  // Initialization sequence — order matters
+  // -------------------------------------------------------------------
+
+  private async initialize(): Promise<void> {
     try {
-      const contentId = this.playerConfig.metadata.identifier;
-      const userId = this.playerConfig.context.uid || 'anonymous';
+      // Step 1: Extract session config from Sunbird's playerConfig
+      this.sessionConfig = this.buildSessionConfig();
 
-      console.log('SCORM Player: Initializing', { contentId, userId });
-      console.log('SCORM Player: PlayerConfig', this.playerConfig);
+      // Step 2: Create SCORM API on window (must happen before iframe loads)
+      this.scormService.initializeApi(this.sessionConfig);
 
-      const scormVersion = this.playerConfig.metadata.scormVersion || '1.2';
-      console.log('SCORM Player: Detected version', scormVersion);
+      // Step 3: Restore previously saved CMI data from Lern BB.
+      // Uses the existing content/state/read API — same as all players.
+      // Fails gracefully if Lern BB isn't running.
+      await this.scormService.restoreCmiData();
 
-      // STEP 1: Initialize scorm-again API FIRST
-      const apiConfig = {
-        lmsCommitUrl: `/api/scorm/v1/commit`,
-        dataCommitFormat: 'json',
-        autocommit: true,
-        autocommitSeconds: 30,
-        logLevel: 4  // Debug level
-      };
-
-      if (scormVersion.includes('2004')) {
-        console.log('SCORM Player: Creating Scorm2004API instance');
-        this.scormApi = new Scorm2004API(apiConfig);
-        // STEP 2: Expose API to window IMMEDIATELY (before iframe loads)
-        (window as any).API_1484_11 = this.scormApi;
-        console.log('SCORM Player: API exposed to window.API_1484_11');
-      } else {
-        console.log('SCORM Player: Creating Scorm12API instance');
-        this.scormApi = new Scorm12API(apiConfig);
-        // STEP 2: Expose API to window IMMEDIATELY (before iframe loads)
-        (window as any).API = this.scormApi;
-        console.log('SCORM Player: API exposed to window.API');
-      }
-
-      console.log('SCORM Player: API object:', this.scormApi);
-
-      // STEP 3: Load existing SCORM data
-      const response = await fetch(`/api/scorm/v1/data/${contentId}?userId=${userId}`);
-      const result = await response.json();
-
-      if (result.success && result.data && Object.keys(result.data).length > 0) {
-        console.log('SCORM Player: Loading saved data', result.data);
-        this.scormApi.loadFromJSON(result.data);
-      } else {
-        console.log('SCORM Player: No saved data found, starting fresh');
-      }
-
-      // STEP 4: Set up event listeners
-      this.scormApi.on('LMSInitialize', () => {
-        console.log('SCORM: LMSInitialize called');
-        this.emitTelemetry('START');
+      // Step 4: Wire commit handler to persist CMI via existing API
+      this.scormService.registerCommitHandler({
+        onInitialize: () => this.emitTelemetry('START'),
+        onFinish:     () => { this.emitTelemetry('END'); this.emitPlayer('END'); }
       });
 
-      this.scormApi.on('LMSFinish', () => {
-        console.log('SCORM: LMSFinish called');
-        this.emitTelemetry('END');
-      });
+      // Step 5: Build and validate the iframe URL
+      this.contentUrl = this.buildContentUrl();
 
-      this.scormApi.on('LMSCommit', (data: any) => {
-        console.log('SCORM: LMSCommit called', data);
-        this.saveScormData(data);
-      });
-
-      // STEP 5: Construct SCORM content URL (this triggers iframe load)
-      const streamingUrl = this.playerConfig.metadata.streamingUrl;
-      const previewUrl = this.playerConfig.metadata.previewUrl;
-      const artifactUrl = this.playerConfig.metadata.artifactUrl;
-      const scormLaunchUrl = this.playerConfig.metadata.scormLaunchUrl || 'index_lms.html';
-
-      // Priority: streamingUrl > previewUrl > artifactUrl
-      let baseUrl = streamingUrl || previewUrl;
-
-      if (!baseUrl && artifactUrl) {
-        // Extract base path from artifactUrl
-        const lastSlash = artifactUrl.lastIndexOf('/');
-        baseUrl = artifactUrl.substring(0, lastSlash);
-      }
-
-      if (!baseUrl) {
-        throw new Error('No content URL available (streamingUrl, previewUrl, or artifactUrl)');
-      }
-
-      // Construct full URL with launch file and sanitize
-      let fullUrl = `${baseUrl}/${scormLaunchUrl}`;
-
-      // Fix for cross-origin iframe issues (CORS) when running locally
-      // Proxy requests to 9001 through the 3000 portal backend
-      if (fullUrl.includes('localhost:9001')) {
-        fullUrl = fullUrl.replace('http://localhost:9001', '/content-storage');
-      }
-
-      this.contentUrl = this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
-
-      console.log('SCORM Player: Content URL', fullUrl);
-      console.log('SCORM Player: API is ready at window.API - iframe will now load');
-
+      // Step 6: Done — show the iframe
       this.loading = false;
+      this.emitPlayer('START');
       this.emitTelemetry('START');
 
-      console.log('SCORM Player: Initialization complete');
-      console.log('SCORM Player: Iframe should find API at window.parent.API or window.top.API');
-
     } catch (error) {
-      console.error('SCORM Player Initialization Error:', error);
-      this.error = error.message;
+      this.errorMessage = error.message || 'Failed to load SCORM content';
       this.loading = false;
+      this.emitPlayer('ERROR', { error: this.errorMessage });
     }
   }
 
-  async saveScormData(cmiData: any) {
-    try {
-      const contentId = this.playerConfig.metadata.identifier;
-      const userId = this.playerConfig.context.uid || 'anonymous';
 
-      console.log('SCORM Player: Saving data', { contentId, userId, dataSize: JSON.stringify(cmiData).length });
+  // -------------------------------------------------------------------
+  // Build session config from Sunbird's playerConfig
+  // -------------------------------------------------------------------
+  // playerConfig.metadata comes from Knowlg content/v3/read.
+  // playerConfig.context comes from the course/collection player.
+  // -------------------------------------------------------------------
 
-      const response = await fetch('/api/scorm/v1/commit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentId, userId, cmiData })
-      });
-
-      const result = await response.json();
-      console.log('SCORM Player: Data saved', result);
-
-    } catch (error) {
-      console.error('SCORM Player: Error saving data', error);
-    }
-  }
-
-  emitTelemetry(eid: string) {
-    const event = {
-      eid,
-      ets: Date.now(),
-      ver: '3.0',
-      mid: `${eid}:${Date.now()}`,
-      actor: {
-        id: this.playerConfig.context.uid || 'anonymous',
-        type: 'User'
-      },
-      context: this.playerConfig.context,
-      object: {
-        id: this.playerConfig.metadata.identifier,
-        type: 'Content',
-        ver: this.playerConfig.metadata.pkgVersion || '1.0'
-      },
-      edata: {
-        type: 'scorm',
-        mode: 'play'
-      }
+  private buildSessionConfig(): ScormSessionConfig {
+    const meta = this.playerConfig?.metadata || {};
+    const ctx  = this.playerConfig?.context  || {};
+    return {
+      contentId:    meta.identifier,
+      userId:       ctx.uid || 'anonymous',
+      courseId:     ctx.courseId || meta.identifier,
+      batchId:      ctx.batchId || 'default',
+      scormVersion: String(meta.scormVersion || '').includes('2004') ? '2004' : '1.2'
     };
-
-    console.log('SCORM Player: Emitting telemetry', eid);
-    this.telemetryEvent.emit({ detail: { telemetryData: event } });
   }
 
-  ngOnDestroy() {
-    console.log('SCORM Player: Destroying');
 
-    if (this.scormApi) {
-      try {
-        // Call LMSFinish to properly terminate the SCORM session
-        this.scormApi.LMSFinish();
-      } catch (e) {
-        console.error('Error terminating SCORM session:', e);
+  // -------------------------------------------------------------------
+  // Build the iframe src URL
+  // -------------------------------------------------------------------
+  // Priority: streamingUrl > previewUrl > artifactUrl
+  //
+  // If the URL is on a different origin than the portal, route it
+  // through /content-storage to avoid iframe CORS.
+  // -------------------------------------------------------------------
+
+  private buildContentUrl(): SafeResourceUrl {
+    const meta = this.playerConfig?.metadata || {};
+    const launchFile = meta.scormLaunchUrl || 'index_lms.html';
+
+    // Determine the base URL for the extracted SCORM package
+    let baseUrl = meta.streamingUrl || meta.previewUrl;
+    if (!baseUrl && meta.artifactUrl) {
+      // artifactUrl points to the .zip; the extracted folder is at the same level
+      baseUrl = meta.artifactUrl.substring(0, meta.artifactUrl.lastIndexOf('/'));
+    }
+    if (!baseUrl) {
+      throw new Error('No content URL in metadata (streamingUrl, previewUrl, or artifactUrl)');
+    }
+
+    let fullUrl = `${baseUrl}/${launchFile}`;
+
+    // Security: validate against allowed domains
+    this.validateUrlDomain(fullUrl);
+
+    // CORS: proxy through portal if cross-origin
+    fullUrl = this.proxyIfCrossOrigin(fullUrl);
+
+    return this.sanitizer.bypassSecurityTrustResourceUrl(fullUrl);
+  }
+
+
+  // -------------------------------------------------------------------
+  // Validate the content URL against the allowed domain list
+  // -------------------------------------------------------------------
+  // Reads from window.__scormAllowedDomains (injected by EJS).
+  // Falls back to allowing only localhost (safe default for dev).
+  // -------------------------------------------------------------------
+
+  private validateUrlDomain(url: string): void {
+    const allowedRaw: string = (window as any).__scormAllowedDomains || '';
+    const allowedDomains = allowedRaw
+      .split(',')
+      .map(d => d.trim().toLowerCase())
+      .filter(d => d.length > 0);
+
+    // Safe default: only localhost if nothing configured
+    if (allowedDomains.length === 0) {
+      allowedDomains.push('localhost');
+    }
+
+    try {
+      const hostname = new URL(url).hostname.toLowerCase();
+      const isAllowed = allowedDomains.some(domain =>
+        hostname === domain || hostname.endsWith('.' + domain)
+      );
+      if (!isAllowed) {
+        throw new Error(`Content domain "${hostname}" not in allowed list: [${allowedDomains.join(', ')}]`);
       }
+    } catch (e) {
+      // Re-throw domain validation errors
+      if (e.message.includes('not in allowed list')) throw e;
+      // URL parsing failed — likely a relative URL, which is same-origin (fine)
     }
+  }
 
-    // Clean up window.API
-    if ((window as any).API) {
-      delete (window as any).API;
+
+  // -------------------------------------------------------------------
+  // Rewrite cross-origin URLs through the portal's /content-storage proxy
+  // -------------------------------------------------------------------
+  // In production behind a CDN where everything is same-origin,
+  // no rewrite happens. Locally with MinIO on :9001, it kicks in.
+  // -------------------------------------------------------------------
+
+  private proxyIfCrossOrigin(url: string): string {
+    try {
+      const contentOrigin = new URL(url).origin;
+      const portalOrigin  = window.location.origin;
+
+      if (contentOrigin !== portalOrigin) {
+        return url.replace(contentOrigin, '/content-storage');
+      }
+    } catch (_) {
+      // Relative URL — already same-origin, no rewrite needed
     }
+    return url;
+  }
 
-    this.emitTelemetry('END');
+
+  // -------------------------------------------------------------------
+  // Event emitters — match the shape other players emit
+  // -------------------------------------------------------------------
+
+  private emitPlayer(type: string, data?: any): void {
+    this.playerEvent.emit({ eid: type, metaData: data || {} });
+  }
+
+  private emitTelemetry(eid: string): void {
+    this.telemetryEvent.emit({
+      detail: {
+        telemetryData: {
+          eid,
+          ets: Date.now(),
+          ver: '3.0',
+          mid: `SCORM:${eid}:${Date.now()}`,
+          actor: {
+            id: this.sessionConfig?.userId || 'anonymous',
+            type: 'User'
+          },
+          context: this.playerConfig?.context,
+          object: {
+            id: this.sessionConfig?.contentId,
+            type: 'Content',
+            ver: String(this.playerConfig?.metadata?.pkgVersion || '1.0')
+          },
+          edata: { type: 'scorm', mode: 'play' }
+        }
+      }
+    });
+  }
+
+
+  // -------------------------------------------------------------------
+  // Cleanup
+  // -------------------------------------------------------------------
+
+  ngOnDestroy(): void {
+    this.scormService.destroy();
   }
 }
